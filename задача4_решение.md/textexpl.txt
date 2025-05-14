@@ -1,0 +1,268 @@
+// Декоратор
+Класс DecoratedSaver:
+    Приватные поля:
+        originalSaver
+        mailSender
+        cacheUpdater
+    Метод saveData(data):
+        originalSaver.saveData(data)
+        mailSender.send()
+        cacheUpdater.update()
+
+// Наблюдатель
+Интерфейс Listener:
+    Метод onDataSaved(data)
+
+Класс EventManager:
+    Список listeners
+    Метод subscribe(listener)
+    Метод notify(data)
+
+Класс MailListener (реализует Listener):
+    Метод onDataSaved(data):
+        mailSender.send()
+
+Класс CacheListener (реализует Listener):
+    Метод onDataSaved(data):
+        cacheUpdater.update()
+
+Клиент:
+    Создать EventManager
+    Добавить слушатели
+    Сохранить данные через оригинальный Saver
+    Уведомить слушателей
+
+
+**Решение на C#:**
+
+**Способ 1: Декоратор**
+
+```csharp
+public class DatabaseSaverDecorator : IDatabaseSaver
+{
+    private readonly IDatabaseSaver _wrappedSaver;
+    private readonly MailSender _mailSender;
+    private readonly CacheUpdater _cacheUpdater;
+
+    public DatabaseSaverDecorator(IDatabaseSaver saver, MailSender mailSender, CacheUpdater cacheUpdater)
+    {
+        _wrappedSaver = saver;
+        _mailSender = mailSender;
+        _cacheUpdater = cacheUpdater;
+    }
+
+    public void SaveData(object data)
+    {
+        _wrappedSaver.SaveData(data);
+        _mailSender.Send("admin@example.com");
+        _cacheUpdater.UpdateCache();
+    }
+}
+
+// Клиентский код
+public class DatabaseSaverClient
+{
+    public void Main(bool b)
+    {
+        var saver = new DatabaseSaverDecorator(
+            new DatabaseSaver(),
+            new MailSender(),
+            new CacheUpdater()
+        );
+        DoSmth(saver);
+    }
+
+    private void DoSmth(IDatabaseSaver saver)
+    {
+        saver.SaveData(null);
+    }
+}
+```
+
+**Способ 2: Наблюдатель с менеджером событий**
+
+```csharp
+public interface IDataSaveListener
+{
+    void OnDataSaved(object data);
+}
+
+public class DataSaveEventManager
+{
+    private readonly List<IDataSaveListener> _listeners = new List<IDataSaveListener>();
+
+    public void Subscribe(IDataSaveListener listener) => _listeners.Add(listener);
+    public void Notify(object data) => _listeners.ForEach(l => l.OnDataSaved(data));
+}
+
+public class MailListener : IDataSaveListener
+{
+    private readonly MailSender _sender;
+    public MailListener(MailSender sender) => _sender = sender;
+    public void OnDataSaved(object data) => _sender.Send("admin@example.com");
+}
+
+public class CacheListener : IDataSaveListener
+{
+    private readonly CacheUpdater _updater;
+    public CacheListener(CacheUpdater updater) => _updater = updater;
+    public void OnDataSaved(object data) => _updater.UpdateCache();
+}
+
+public class DatabaseSaverClient
+{
+    public void Main(bool b)
+    {
+        var eventManager = new DataSaveEventManager();
+        eventManager.Subscribe(new MailListener(new MailSender()));
+        eventManager.Subscribe(new CacheListener(new CacheUpdater()));
+
+        var saver = new DatabaseSaver();
+        DoSmth(saver, eventManager);
+    }
+
+    private void DoSmth(IDatabaseSaver saver, DataSaveEventManager manager)
+    {
+        saver.SaveData(null);
+        manager.Notify(null);
+    }
+}
+```
+
+---
+
+**Решение на Python:**
+
+**Способ 1: Декоратор**
+
+```python
+class DatabaseSaverDecorator:
+    def __init__(self, saver, mail_sender, cache_updater):
+        self._saver = saver
+        self._mail_sender = mail_sender
+        self._cache_updater = cache_updater
+
+    def save_data(self, data):
+        self._saver.save_data(data)
+        self._mail_sender.send("admin@example.com")
+        self._cache_updater.update_cache()
+
+# Клиентский код
+class DatabaseSaverClient:
+    def main(self, b):
+        saver = DatabaseSaverDecorator(
+            DatabaseSaver(),
+            MailSender(),
+            CacheUpdater()
+        )
+        self.do_smth(saver)
+
+    def do_smth(self, saver):
+        saver.save_data(None)
+```
+
+**Способ 2: Наблюдатель**
+
+```python
+from abc import ABC, abstractmethod
+
+class DataSaveListener(ABC):
+    @abstractmethod
+    def on_data_saved(self, data):
+        pass
+
+class DataSaveEventManager:
+    def __init__(self):
+        self._listeners = []
+    
+    def subscribe(self, listener):
+        self._listeners.append(listener)
+    
+    def notify(self, data):
+        for listener in self._listeners:
+            listener.on_data_saved(data)
+
+class MailListener(DataSaveListener):
+    def __init__(self, mail_sender):
+        self._mail_sender = mail_sender
+    
+    def on_data_saved(self, data):
+        self._mail_sender.send("admin@example.com")
+
+class CacheListener(DataSaveListener):
+    def __init__(self, cache_updater):
+        self._cache_updater = cache_updater
+    
+    def on_data_saved(self, data):
+        self._cache_updater.update_cache()
+
+class DatabaseSaverClient:
+    def main(self, b):
+        event_manager = DataSaveEventManager()
+        event_manager.subscribe(MailListener(MailSender()))
+        event_manager.subscribe(CacheListener(CacheUpdater()))
+
+        saver = DatabaseSaver()
+        self.do_smth(saver, event_manager)
+
+    def do_smth(self, saver, event_manager):
+        saver.save_data(None)
+        event_manager.notify(None)
+```
+
+---
+
+**Псевдокод:**
+
+```
+// Декоратор
+Класс DecoratedSaver:
+    Приватные поля:
+        originalSaver
+        mailSender
+        cacheUpdater
+    Метод saveData(data):
+        originalSaver.saveData(data)
+        mailSender.send()
+        cacheUpdater.update()
+
+// Наблюдатель
+Интерфейс Listener:
+    Метод onDataSaved(data)
+
+Класс EventManager:
+    Список listeners
+    Метод subscribe(listener)
+    Метод notify(data)
+
+Класс MailListener (реализует Listener):
+    Метод onDataSaved(data):
+        mailSender.send()
+
+Класс CacheListener (реализует Listener):
+    Метод onDataSaved(data):
+        cacheUpdater.update()
+
+Клиент:
+    Создать EventManager
+    Добавить слушатели
+    Сохранить данные через оригинальный Saver
+    Уведомить слушателей
+```
+
+---
+
+**Детальное описание:**
+
+1. **Декоратор:**
+   - **Изменения:** Создан класс-обертка, который вызывает оригинальный метод сохранения, а затем дополнительные операции.
+   - **Гибкость:** Для добавления новой операции (например, логирования) нужно создать новый декоратор или модифицировать существующий.
+
+2. **Наблюдатель:**
+   - **Изменения:** Введен менеджер событий, который уведомляет подписчиков о сохранении данных.
+   - **Гибкость:** Добавление новой операции требует только создания нового класса-слушателя и его регистрации в менеджере.
+
+**Оба подхода:**
+- Не изменяют существующие классы (DatabaseSaver, MailSender, CacheUpdater).
+- Позволяют легко добавлять/удалять операции через новые декораторы или слушатели.
+- Соответствуют принципу открытости/закрытости (Open/Closed Principle).

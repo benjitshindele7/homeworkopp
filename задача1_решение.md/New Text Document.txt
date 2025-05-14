@@ -1,0 +1,14 @@
+Создать класс FtpLogReader, реализующий интерфейс ILogReader:
+    Конструктор(логин, пароль):
+        сохранить логин и пароль
+        создать экземпляр FtpClient
+
+    Метод ReadLogFile(путь_к_файлу):
+        вызвать FtpClient.ReadFile(логин, пароль, путь_к_файлу)
+        вернуть результат
+
+В LogImporterClient:
+    Метод DoMethod():
+        создать FtpLogReader с логином и паролем
+        передать его в LogImporter
+        вызвать ImportLogs с путем к файлу на FTP

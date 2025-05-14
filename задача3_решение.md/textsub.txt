@@ -1,0 +1,222 @@
+Абстрактный класс UserService:
+    Метод GetUserInfo(pageUrl):
+        userId = GetUserId(pageUrl)
+        userName = GetUserName(userId)
+        friends = GetFriends(userId)
+        вернуть UserInfo(userId, userName, friends)
+    
+    Абстрактные методы:
+        GetUserId(pageUrl)
+        GetUserName(userId)
+        GetFriends(userId)
+
+Класс TwitterUserService наследует UserService:
+    Реализация:
+        GetUserId через парсинг URL
+        GetUserName через TwitterClient
+        GetFriends через TwitterClient
+
+Класс VkUserService наследует UserService:
+    Реализация:
+        GetUserId через существующий VkUserService.Parse
+        GetUserName через существующий VkUserService.GetName
+        GetFriends через существующие методы VkUserService
+
+**Решение на C#:**
+
+1. **Создаем абстрактный базовый класс:**
+```csharp
+public abstract class UserService
+{
+    public UserInfo GetUserInfo(string pageUrl)
+    {
+        // 1. Получение идентификатора и имени пользователя
+        var userId = GetUserId(pageUrl);
+        var userName = GetUserName(userId);
+
+        // 2. Получение друзей
+        var friends = GetFriends(userId);
+
+        // 3. Сборка результата
+        return new UserInfo
+        {
+            UserId = userId,
+            Name = userName,
+            Friends = friends
+        };
+    }
+
+    protected abstract string GetUserId(string pageUrl);
+    protected abstract string GetUserName(string userId);
+    protected abstract UserInfo[] GetFriends(string userId);
+}
+```
+
+2. **Реализуем для Twitter:**
+```csharp
+public class TwitterUserService : UserService
+{
+    private readonly TwitterClient _client = new TwitterClient();
+
+    protected override string GetUserId(string pageUrl)
+    {
+        var regex = new Regex("twitter.com/(.*)");
+        return regex.Match(pageUrl).Groups[1].Value;
+    }
+
+    protected override string GetUserName(string userId)
+    {
+        return _client.GetUserNameById(long.Parse(userId));
+    }
+
+    protected override UserInfo[] GetFriends(string userId)
+    {
+        var subscribers = _client.GetSubscribers(long.Parse(userId));
+        return subscribers.Select(u => new UserInfo 
+        {
+            UserId = u.UserId.ToString(),
+            Name = _client.GetUserNameById(u.UserId)
+        }).ToArray();
+    }
+}
+```
+
+3. **Реализуем для VK:**
+```csharp
+public class VkUserService : UserService
+{
+    protected override string GetUserId(string pageUrl)
+    {
+        return new VkUserService().Parse(pageUrl);
+    }
+
+    protected override string GetUserName(string userId)
+    {
+        return new VkUserService().GetName(userId);
+    }
+
+    protected override UserInfo[] GetFriends(string userId)
+    {
+        var users = new VkUserService().GetFriendsById(userId);
+        return new VkUserService().ConvertToUserInfo(users);
+    }
+}
+```
+
+**Решение на Python:**
+
+1. **Базовый абстрактный класс:**
+```python
+from abc import ABC, abstractmethod
+
+class UserService(ABC):
+    def get_user_info(self, page_url: str) -> 'UserInfo':
+        # 1. Получение идентификатора и имени
+        user_id = self.get_user_id(page_url)
+        user_name = self.get_user_name(user_id)
+        
+        # 2. Получение друзей
+        friends = self.get_friends(user_id)
+        
+        # 3. Сборка результата
+        return UserInfo(
+            UserId=user_id,
+            Name=user_name,
+            Friends=friends
+        )
+    
+    @abstractmethod
+    def get_user_id(self, page_url: str) -> str:
+        pass
+    
+    @abstractmethod
+    def get_user_name(self, user_id: str) -> str:
+        pass
+    
+    @abstractmethod
+    def get_friends(self, user_id: str) -> list['UserInfo']:
+        pass
+```
+
+2. **Реализация для Twitter:**
+```python
+import re
+
+class TwitterUserService(UserService):
+    def __init__(self):
+        self.client = TwitterClient()
+    
+    def get_user_id(self, page_url: str) -> str:
+        match = re.search(r"twitter.com/(\w+)", page_url)
+        return match.group(1) if match else ""
+    
+    def get_user_name(self, user_id: str) -> str:
+        return self.client.GetUserNameById(int(user_id))
+    
+    def get_friends(self, user_id: str) -> list['UserInfo']:
+        subscribers = self.client.GetSubscribers(int(user_id))
+        return [
+            UserInfo(
+                UserId=str(u.UserId),
+                Name=self.client.GetUserNameById(u.UserId)
+            ) for u in subscribers
+        ]
+```
+
+**Псевдокод:**
+
+```
+Абстрактный класс UserService:
+    Метод GetUserInfo(pageUrl):
+        userId = GetUserId(pageUrl)
+        userName = GetUserName(userId)
+        friends = GetFriends(userId)
+        вернуть UserInfo(userId, userName, friends)
+    
+    Абстрактные методы:
+        GetUserId(pageUrl)
+        GetUserName(userId)
+        GetFriends(userId)
+
+Класс TwitterUserService наследует UserService:
+    Реализация:
+        GetUserId через парсинг URL
+        GetUserName через TwitterClient
+        GetFriends через TwitterClient
+
+Класс VkUserService наследует UserService:
+    Реализация:
+        GetUserId через существующий VkUserService.Parse
+        GetUserName через существующий VkUserService.GetName
+        GetFriends через существующие методы VkUserService
+```
+
+**Детальное описание изменений:**
+
+1. **Выделение общего алгоритма:**
+   - Создан абстрактный класс `UserService`, инкапсулирующий:
+     - Общую последовательность шагов (`GetUserInfo`)
+     - Абстрактные методы для специфичных операций
+
+2. **Рефакторинг сервисов:**
+   - `TwitterUserService` и `VkUserService` становятся наследниками `UserService`
+   - Все уникальные для платформы операции вынесены в:
+     - `GetUserId` — парсинг URL
+     - `GetUserName` — получение имени пользователя
+     - `GetFriends` — получение и конвертация друзей
+
+3. **Устранение дублирования:**
+   - Логика построения `UserInfo` теперь в базовом классе
+   - Добавление новой соцсети требует только:
+     - Наследования от `UserService`
+     - Реализации 3 абстрактных методов
+
+4. **Сохранение существующей логики:**
+   - Для VK повторно используются оригинальные методы `Parse`, `GetName` и др.
+   - Для Twitter — методы `TwitterClient`
+
+**Преимущества решения:**
+- Алгоритм получения UserInfo централизован в одном месте
+- Минимизирован риск ошибок при изменении логики
+- Простое добавление поддержки новых социальных сетей
+- Сохранение совместимости с существующим кодом
